@@ -10,12 +10,21 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// Select components are no longer needed
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { handleTranslateAction, handleTransliterateAction, fetchDailyVocabularyAction } from '@/app/actions';
 import type { GenerateDailyVocabularyOutput } from '@/ai/flows/generate-daily-vocabulary';
 
 const MAX_WORDS = 50;
+const ARABIC_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+function detectLanguage(text: string): 'ar' | 'en' {
+  if (ARABIC_REGEX.test(text)) {
+    return 'ar';
+  }
+  return 'en';
+}
 
 export default function NatiqAiApp() {
   const [activeTab, setActiveTab] = useState<'text' | 'image'>('text');
@@ -26,8 +35,9 @@ export default function NatiqAiApp() {
   
   const [processedText, setProcessedText] = useState<string>('');
 
-  const [targetLanguage, setTargetLanguage] = useState<'en' | 'ar'>('en'); // Default to English for translation if UI is Arabic
-  const [sourceLanguageTranslit, setSourceLanguageTranslit] = useState<'en' | 'ar'>('en'); // Default to English script for Arabization
+  // Removed targetLanguage and sourceLanguageTranslit states
+  // const [targetLanguage, setTargetLanguage] = useState<'en' | 'ar'>('en'); 
+  // const [sourceLanguageTranslit, setSourceLanguageTranslit] = useState<'en' | 'ar'>('en');
 
   const [translationResult, setTranslationResult] = useState<string | null>(null);
   const [transliterationResult, setTransliterationResult] = useState<string | null>(null);
@@ -86,7 +96,7 @@ export default function NatiqAiApp() {
       const ocrPlaceholder = `النص من ${file.name} (عدّله إذا لزم الأمر)`;
       setExtractedText(ocrPlaceholder);
       setProcessedText(ocrPlaceholder);
-      setInputText('');
+      setInputText(''); // Clear text input when image is uploaded
       setTranslationResult(null);
       setTransliterationResult(null);
       setError(null);
@@ -120,15 +130,18 @@ export default function NatiqAiApp() {
     setTransliterationResult(null);
     setError(null);
 
+    const detectedInputLang = detectLanguage(processedText);
+    const targetLang = detectedInputLang === 'ar' ? 'en' : 'ar';
+
     startTranslateTransition(async () => {
       try {
-        const result = await handleTranslateAction({ text: processedText, targetLanguage });
+        const result = await handleTranslateAction({ text: processedText, targetLanguage: targetLang });
         if (result.error) {
           setError(result.error);
           toast({ title: 'خطأ في الترجمة', description: result.error, variant: 'destructive' });
         } else {
           setTranslationResult(result.translatedText ?? 'لا توجد ترجمة متاحة.');
-          toast({ title: 'تمت الترجمة بنجاح', description: 'تم ترجمة النص.' });
+          toast({ title: 'تمت الترجمة بنجاح', description: `تم ترجمة النص إلى ${targetLang === 'en' ? 'الإنجليزية' : 'العربية'}.` });
         }
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'حدث خطأ غير معروف.';
@@ -149,15 +162,40 @@ export default function NatiqAiApp() {
     setTransliterationResult(null);
     setError(null);
 
+    const detectedInputLang = detectLanguage(processedText);
+
     startTransliterateTransition(async () => {
       try {
-        const result = await handleTransliterateAction({ text: processedText, sourceLanguage: sourceLanguageTranslit });
-        if (result.error) {
-          setError(result.error);
-          toast({ title: 'خطأ في التعريب', description: result.error, variant: 'destructive' });
+        if (detectedInputLang === 'ar') {
+          // Special case: Arabic input, translate to English then transliterate the English result
+          const translationResponse = await handleTranslateAction({ text: processedText, targetLanguage: 'en' });
+          if (translationResponse.error || !translationResponse.translatedText) {
+            setError(translationResponse.error || 'فشل ترجمة النص العربي قبل التعريب.');
+            toast({ title: 'خطأ في الترجمة الأولية', description: translationResponse.error || 'لم يتمكن من ترجمة النص العربي للإنجليزية.', variant: 'destructive' });
+            return;
+          }
+          
+          const englishText = translationResponse.translatedText;
+          const translitResponse = await handleTransliterateAction({ text: englishText, sourceLanguage: 'en' });
+
+          if (translitResponse.error) {
+            setError(translitResponse.error);
+            toast({ title: 'خطأ في التعريب', description: translitResponse.error, variant: 'destructive' });
+          } else {
+            setTransliterationResult(translitResponse.transliteratedText ?? 'لا يوجد تعريب متاح.');
+            toast({ title: 'تم التعريب بنجاح', description: 'تم تعريب النص الإنجليزي الناتج.' });
+          }
+
         } else {
-          setTransliterationResult(result.transliteratedText ?? 'لا يوجد تعريب متاح.');
-          toast({ title: 'تم التعريب بنجاح', description: 'تم تعريب النص.' });
+          // Standard case: English (or non-Arabic) input, transliterate to Arabic script
+          const result = await handleTransliterateAction({ text: processedText, sourceLanguage: 'en' });
+          if (result.error) {
+            setError(result.error);
+            toast({ title: 'خطأ في التعريب', description: result.error, variant: 'destructive' });
+          } else {
+            setTransliterationResult(result.transliteratedText ?? 'لا يوجد تعريب متاح.');
+            toast({ title: 'تم التعريب بنجاح', description: 'تم تعريب النص إلى الحروف العربية.' });
+          }
         }
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : 'حدث خطأ غير معروف.';
@@ -205,7 +243,7 @@ export default function NatiqAiApp() {
                   <Textarea
                     placeholder="اكتب أو الصق النص هنا (عربي أو إنجليزي)..."
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
+                    onChange={(e) => {setInputText(e.target.value); setProcessedText(e.target.value);}}
                     rows={6}
                     className="mb-2 focus-visible:ring-accent"
                   />
@@ -234,7 +272,7 @@ export default function NatiqAiApp() {
                     <Textarea
                       placeholder="النص المستخرج من الصورة سيظهر هنا (قابل للتعديل)..."
                       value={extractedText}
-                      onChange={(e) => setExtractedText(e.target.value)}
+                      onChange={(e) => {setExtractedText(e.target.value); setProcessedText(e.target.value);}}
                       rows={4}
                       className="mt-2 focus-visible:ring-accent"
                       aria-label="النص المستخرج من الصورة"
@@ -257,32 +295,14 @@ export default function NatiqAiApp() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div>
-                  <Label htmlFor="translate-target-lang" className="text-sm font-medium">ترجمة إلى</Label>
-                  <Select value={targetLanguage} onValueChange={(value) => setTargetLanguage(value as 'en' | 'ar')}>
-                    <SelectTrigger id="translate-target-lang" className="w-full focus:ring-accent">
-                      <SelectValue placeholder="اختر اللغة الهدف" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ar">العربية</SelectItem>
-                      <SelectItem value="en">الإنجليزية</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Removed Translate Select */}
                   <Button onClick={onTranslate} disabled={isTranslating || !processedText.trim()} className="w-full mt-2 bg-primary hover:bg-primary/90">
                     {isTranslating ? <Loader2 className="ms-0 me-2 h-4 w-4 animate-spin" /> : <Languages className="ms-0 me-2 h-4 w-4" />}
                     ترجمة
                   </Button>
                 </div>
                 <div>
-                  <Label htmlFor="translit-source-lang" className="text-sm font-medium">تعريب من</Label>
-                   <Select value={sourceLanguageTranslit} onValueChange={(value) => setSourceLanguageTranslit(value as 'en' | 'ar')}>
-                    <SelectTrigger id="translit-source-lang" className="w-full focus:ring-accent">
-                      <SelectValue placeholder="اختر مصدر النص للتعريب" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">نص إنجليزي (لاتيني)</SelectItem>
-                      <SelectItem value="ar">نص عربي</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Removed Transliterate Select */}
                   <Button onClick={onTransliterate} disabled={isTransliterating || !processedText.trim()} className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90">
                     {isTransliterating ? <Loader2 className="ms-0 me-2 h-4 w-4 animate-spin" /> : <TextQuote className="ms-0 me-2 h-4 w-4" />}
                     تعريب
@@ -359,3 +379,4 @@ export default function NatiqAiApp() {
     </div>
   );
 }
+
