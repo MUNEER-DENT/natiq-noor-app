@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -10,10 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// Select components are no longer needed
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { handleTranslateAction, handleTransliterateAction, fetchDailyVocabularyAction } from '@/app/actions';
+import { handleTranslateAction, handleTransliterateAction, fetchDailyVocabularyAction, handleExtractTextAction } from '@/app/actions';
 import type { GenerateDailyVocabularyOutput } from '@/ai/flows/generate-daily-vocabulary';
 
 const MAX_WORDS = 50;
@@ -35,10 +34,6 @@ export default function NatiqAiApp() {
   
   const [processedText, setProcessedText] = useState<string>('');
 
-  // Removed targetLanguage and sourceLanguageTranslit states
-  // const [targetLanguage, setTargetLanguage] = useState<'en' | 'ar'>('en'); 
-  // const [sourceLanguageTranslit, setSourceLanguageTranslit] = useState<'en' | 'ar'>('en');
-
   const [translationResult, setTranslationResult] = useState<string | null>(null);
   const [transliterationResult, setTransliterationResult] = useState<string | null>(null);
   
@@ -47,6 +42,7 @@ export default function NatiqAiApp() {
 
   const [isTranslating, startTranslateTransition] = useTransition();
   const [isTransliterating, startTransliterateTransition] = useTransition();
+  const [isExtractingText, startExtractTextTransition] = useTransition();
 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -92,14 +88,46 @@ export default function NatiqAiApp() {
     const file = event.target.files?.[0];
     if (file) {
       setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      const ocrPlaceholder = `النص من ${file.name} (عدّله إذا لزم الأمر)`;
-      setExtractedText(ocrPlaceholder);
-      setProcessedText(ocrPlaceholder);
-      setInputText(''); // Clear text input when image is uploaded
-      setTranslationResult(null);
-      setTransliterationResult(null);
-      setError(null);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageDataUri = reader.result as string;
+        setImagePreview(imageDataUri);
+        setExtractedText('');
+        setProcessedText('');
+        setInputText('');
+        setTranslationResult(null);
+        setTransliterationResult(null);
+        setError(null);
+
+        startExtractTextTransition(async () => {
+          toast({ title: 'جاري استخراج النص...', description: 'يرجى الانتظار قليلاً.' });
+          try {
+            const result = await handleExtractTextAction({ imageDataUri });
+            if (result.error) {
+              setError(result.error);
+              setExtractedText('');
+              toast({ title: 'خطأ في استخراج النص', description: result.error, variant: 'destructive' });
+            } else if (result.extractedText !== undefined) {
+              setExtractedText(result.extractedText);
+              setProcessedText(result.extractedText);
+              if (!result.extractedText.trim()) {
+                   toast({ title: 'لم يتم العثور على نص', description: 'لم يتمكن الذكاء الاصطناعي من العثور على نص في الصورة.', variant: 'default' });
+              } else {
+                   toast({ title: 'تم استخراج النص بنجاح', description: 'يمكنك الآن تعديل النص إذا لزم الأمر.' });
+              }
+            } else {
+              setExtractedText('');
+              toast({ title: 'خطأ غير متوقع', description: 'حدث خطأ غير متوقع أثناء استخراج النص.', variant: 'destructive' });
+            }
+          } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : 'حدث خطأ غير معروف أثناء استخراج النص.';
+            setError(errorMsg);
+            setExtractedText('');
+            toast({ title: 'فشل استخراج النص', description: errorMsg, variant: 'destructive' });
+          }
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
   
@@ -167,7 +195,6 @@ export default function NatiqAiApp() {
     startTransliterateTransition(async () => {
       try {
         if (detectedInputLang === 'ar') {
-          // Special case: Arabic input, translate to English then transliterate the English result
           const translationResponse = await handleTranslateAction({ text: processedText, targetLanguage: 'en' });
           if (translationResponse.error || !translationResponse.translatedText) {
             setError(translationResponse.error || 'فشل ترجمة النص العربي قبل التعريب.');
@@ -187,7 +214,6 @@ export default function NatiqAiApp() {
           }
 
         } else {
-          // Standard case: English (or non-Arabic) input, transliterate to Arabic script
           const result = await handleTransliterateAction({ text: processedText, sourceLanguage: 'en' });
           if (result.error) {
             setError(result.error);
@@ -246,6 +272,7 @@ export default function NatiqAiApp() {
                     onChange={(e) => {setInputText(e.target.value); setProcessedText(e.target.value);}}
                     rows={6}
                     className="mb-2 focus-visible:ring-accent"
+                    disabled={isExtractingText}
                   />
                 </TabsContent>
 
@@ -253,31 +280,36 @@ export default function NatiqAiApp() {
                   <div className="space-y-4">
                     <Label htmlFor="image-upload" className="block text-sm font-medium text-foreground mb-1">تحميل صورة لاستخراج النص</Label>
                     <div className="flex items-center justify-center w-full">
-                        <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted border-primary/50 hover:border-primary">
+                        <label htmlFor="image-upload" className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg  bg-card  border-primary/50 hover:border-primary ${isExtractingText ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-muted'}`}>
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                <UploadCloud className="w-10 h-10 mb-3 text-primary" />
+                                {isExtractingText ? <Loader2 className="w-10 h-10 mb-3 text-primary animate-spin" /> : <UploadCloud className="w-10 h-10 mb-3 text-primary" />}
                                 <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">انقر للتحميل</span> أو قم بالسحب والإفلات</p>
                                 <p className="text-xs text-muted-foreground">PNG, JPG, GIF حتى 10 ميجابايت</p>
                             </div>
-                            <Input id="image-upload" type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                            <Input id="image-upload" type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isExtractingText} />
                         </label>
                     </div>
 
                     {imagePreview && (
-                      <div className="mt-4">
+                      <div className="mt-4 relative">
                         <p className="text-sm font-medium mb-1">معاينة الصورة:</p>
-                        <Image src={imagePreview} alt="Uploaded preview" width={200} height={200} className="rounded-md border object-contain max-h-48" data-ai-hint="abstract tech" />
+                        <Image src={imagePreview} alt="Uploaded preview" width={200} height={200} className="rounded-md border object-contain max-h-48" />
+                        {isExtractingText && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md">
+                            <Loader2 className="w-8 h-8 text-white animate-spin" />
+                          </div>
+                        )}
                       </div>
                     )}
                     <Textarea
-                      placeholder="النص المستخرج من الصورة سيظهر هنا (قابل للتعديل)..."
+                      placeholder={isExtractingText ? "جاري استخراج النص من الصورة..." : "النص المستخرج من الصورة سيظهر هنا (قابل للتعديل)..."}
                       value={extractedText}
                       onChange={(e) => {setExtractedText(e.target.value); setProcessedText(e.target.value);}}
                       rows={4}
                       className="mt-2 focus-visible:ring-accent"
                       aria-label="النص المستخرج من الصورة"
+                      readOnly={isExtractingText}
                     />
-                    <p className="text-xs text-muted-foreground">ملاحظة: خاصية استخراج النصوص (OCR) هي محاكاة. يرجى كتابة أو تعديل النص من صورتك أعلاه.</p>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -295,15 +327,13 @@ export default function NatiqAiApp() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div>
-                  {/* Removed Translate Select */}
-                  <Button onClick={onTranslate} disabled={isTranslating || !processedText.trim()} className="w-full mt-2 bg-primary hover:bg-primary/90">
+                  <Button onClick={onTranslate} disabled={isTranslating || !processedText.trim() || isExtractingText || isTransliterating} className="w-full mt-2 bg-primary hover:bg-primary/90">
                     {isTranslating ? <Loader2 className="ms-0 me-2 h-4 w-4 animate-spin" /> : <Languages className="ms-0 me-2 h-4 w-4" />}
                     ترجمة
                   </Button>
                 </div>
                 <div>
-                  {/* Removed Transliterate Select */}
-                  <Button onClick={onTransliterate} disabled={isTransliterating || !processedText.trim()} className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Button onClick={onTransliterate} disabled={isTransliterating || !processedText.trim() || isExtractingText || isTranslating} className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90">
                     {isTransliterating ? <Loader2 className="ms-0 me-2 h-4 w-4 animate-spin" /> : <TextQuote className="ms-0 me-2 h-4 w-4" />}
                     تعريب
                   </Button>
@@ -379,4 +409,3 @@ export default function NatiqAiApp() {
     </div>
   );
 }
-

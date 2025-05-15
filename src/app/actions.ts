@@ -1,9 +1,11 @@
+
 // @ts-nocheck
 "use server";
 
 import { translateUserMessage, type TranslateUserMessageInput, type TranslateUserMessageOutput } from '@/ai/flows/translate-user-message';
 import { transliterateUserMessage, type TransliterateUserMessageInput, type TransliterateUserMessageOutput } from '@/ai/flows/transliterate-user-message';
 import { generateDailyVocabulary, type GenerateDailyVocabularyInput, type GenerateDailyVocabularyOutput } from '@/ai/flows/generate-daily-vocabulary';
+import { extractTextFromImage, type ExtractTextFromImageInput, type ExtractTextFromImageOutput } from '@/ai/flows/extract-text-from-image-flow';
 
 interface ActionResult<T> {
   data?: T;
@@ -11,6 +13,7 @@ interface ActionResult<T> {
   translatedText?: string; // for translateUserMessage
   transliteratedText?: string; // for transliterateUserMessage
   words?: GenerateDailyVocabularyOutput['words']; // for generateDailyVocabulary
+  extractedText?: string; // for extractTextFromImage
 }
 
 export async function handleTranslateAction(
@@ -46,5 +49,17 @@ export async function fetchDailyVocabularyAction(
   } catch (error) {
     console.error('Daily Vocabulary Error:', error);
     return { error: error instanceof Error ? error.message : 'An unknown error occurred while fetching daily vocabulary.' };
+  }
+}
+
+export async function handleExtractTextAction(
+  input: ExtractTextFromImageInput
+): Promise<ActionResult<ExtractTextFromImageOutput>> {
+  try {
+    const result = await extractTextFromImage(input);
+    return { extractedText: result.extractedText };
+  } catch (error) {
+    console.error('Text Extraction Error:', error);
+    return { error: error instanceof Error ? error.message : 'An unknown error occurred during text extraction.' };
   }
 }
