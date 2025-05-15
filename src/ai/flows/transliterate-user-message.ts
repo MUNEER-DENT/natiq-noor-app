@@ -33,14 +33,18 @@ const prompt = ai.definePrompt({
   output: {schema: TransliterateUserMessageOutputSchema},
   prompt: `You are a helpful assistant that transliterates text between Arabic and English.
 
-  If the source language is English, convert the English text to Arabic script, focusing on phonetic accuracy.
-  **When transliterating English text to Arabic script, if the English text contains the letter 'G' (especially the hard 'G' sound as in 'go', 'good', 'game'), preferentially use the Arabic letter 'ق' (Qaf) to represent it. For example, 'game' should be transliterated as 'قيم', and 'good' as 'قود'. Avoid using 'ج' or 'غ' for 'G' unless phonetically more appropriate for specific edge cases or names.**
-  If the source language is Arabic, convert the Arabic text to English script (Latin characters), maintaining the original pronunciation as closely as possible.
+If the source language is English, convert the English text to Arabic script, focusing on phonetic accuracy.
+**Crucial instructions for English to Arabic script transliteration:**
+*   **Do NOT use Arabic diacritics (Tashkeel, e.g., fatha, damma, kasra, sukun, shadda, tanween).**
+*   **Instead, use Arabic vowel letters to represent English vowel sounds: ا (alif) for 'a' sounds, و (waw) for 'u' or 'o' sounds, and ي (ya) for 'i' or 'e' sounds.** For example, 'computer' should be transliterated as 'كومبيوتر' not 'كُمبيوتر', and 'hello' should be 'هالو' not 'هَلُو'.
+*   When transliterating English text to Arabic script, if the English text contains the letter 'G' (especially the hard 'G' sound as in 'go', 'good', 'game'), preferentially use the Arabic letter 'ق' (Qaf) to represent it. For example, 'game' should be transliterated as 'قيم', and 'good' as 'قود'. Avoid using 'ج' or 'غ' for 'G' unless phonetically more appropriate for specific edge cases or names.
 
-  Source Language: {{{sourceLanguage}}}
-  Text: {{{text}}}
+If the source language is Arabic, convert the Arabic text to English script (Latin characters), maintaining the original pronunciation as closely as possible.
 
-  Transliterated Text: `,
+Source Language: {{{sourceLanguage}}}
+Text: {{{text}}}
+
+Transliterated Text: `,
 });
 
 const transliterateUserMessageFlow = ai.defineFlow(
