@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter, Roboto_Mono } from 'next/font/google';
+import { Tajawal, Roboto_Mono } from 'next/font/google'; // Updated font
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
+const tajawal = Tajawal({ // Updated font
+  variable: '--font-tajawal',
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '700'], // Added weights
 });
 
 const robotoMono = Roboto_Mono({
@@ -15,8 +16,8 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Natiq AI - Your Intelligent Language Companion',
-  description: 'Translate, transliterate, and learn with Natiq AI, powered by Google Gemini.',
+  title: 'ناطق AI - رفيقك اللغوي الذكي', // Translated
+  description: 'ترجم، عرب، وتعلم مع ناطق AI، بدعم من Google Gemini.', // Translated
 };
 
 export default function RootLayout({
@@ -25,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${robotoMono.variable} antialiased`}>
+    <html lang="ar" dir="rtl" suppressHydrationWarning> {/* Updated lang and dir */}
+      <body className={`${tajawal.variable} ${robotoMono.variable} antialiased font-sans`}> {/* Updated font variable */}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
