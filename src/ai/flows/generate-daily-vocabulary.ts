@@ -21,11 +21,11 @@ export type GenerateDailyVocabularyInput = z.infer<typeof GenerateDailyVocabular
 const GenerateDailyVocabularyOutputSchema = z.object({
   words: z.array(
     z.object({
-      english: z.string().describe('The English word.'),
-      arabicTranslation: z.string().describe('The Arabic translation of the word.'),
-      arabicTransliteration: z.string().describe('The Arabic transliteration of the word.'),
+      english: z.string().describe('The English word or phrase.'),
+      arabicTranslation: z.string().describe('The Arabic translation.'),
+      arabicTransliteration: z.string().describe('The Arabic script transliteration focusing on phonetic accuracy.'),
     })
-  ).describe('A list of English words with their Arabic translations and transliterations.'),
+  ).describe('A list of English words or short phrases with their Arabic translations and transliterations.'),
 });
 export type GenerateDailyVocabularyOutput = z.infer<typeof GenerateDailyVocabularyOutputSchema>;
 
@@ -37,61 +37,32 @@ const generateDailyVocabularyPrompt = ai.definePrompt({
   name: 'generateDailyVocabularyPrompt',
   input: {schema: GenerateDailyVocabularyInputSchema},
   output: {schema: GenerateDailyVocabularyOutputSchema},
-  prompt: `Provide a list of {{numWords}} common English words with their Arabic translations and transliterations.
+  prompt: `Provide a list of {{numWords}} common English words or short phrases with their Arabic translations and a phonetically accurate Arabic script transliteration.
 
       Format the response as a JSON array of objects, where each object has the following keys:
-      - english: The English word.
-      - arabicTranslation: The Arabic translation of the word.
-      - arabicTransliteration: The Arabic transliteration of the word.
+      - english: The English word or phrase.
+      - arabicTranslation: The Arabic translation.
+      - arabicTransliteration: The Arabic script transliteration focusing on phonetic accuracy.
 
       Example:
       [
         {
           "english": "hello",
           "arabicTranslation": "مرحبا",
-          "arabicTransliteration": "mrhba"
+          "arabicTransliteration": "هالو"
         },
-        ...
-      ]`,      
+        {
+          "english": "thank you",
+          "arabicTranslation": "شكرا لك",
+          "arabicTransliteration": "ثانك يو"
+        },
+        {
+          "english": "good morning",
+          "arabicTranslation": "صباح الخير",
+          "arabicTransliteration": "جود مورنينج"
+        }
+      ]`,
 });
-
-const translateToArabic = ai.defineTool(
-  {
-    name: 'translateToArabic',
-    description: 'Translates a given English word to Arabic.',
-    inputSchema: z.object({
-      englishWord: z.string().describe('The English word to translate.'),
-    }),
-    outputSchema: z.string().describe('The Arabic translation of the word.'),
-  },
-  async (input) => {
-    const translatePrompt = ai.definePrompt({
-      name: 'translatePrompt',
-      prompt: `Translate the following English word to Arabic: {{{englishWord}}}`,
-    });
-    const {output} = await translatePrompt(input);
-    return output!;
-  }
-);
-
-const transliterateToArabic = ai.defineTool(
-  {
-    name: 'transliterateToArabic',
-    description: 'Transliterates a given English word to Arabic script.',
-    inputSchema: z.object({
-      englishWord: z.string().describe('The English word to transliterate.'),
-    }),
-    outputSchema: z.string().describe('The Arabic transliteration of the word.'),
-  },
-  async (input) => {
-    const transliteratePrompt = ai.definePrompt({
-      name: 'transliteratePrompt',
-      prompt: `Transliterate the following English word to Arabic script: {{{englishWord}}}`,
-    });
-    const {output} = await transliteratePrompt(input);
-    return output!;
-  }
-);
 
 const generateDailyVocabularyFlow = ai.defineFlow(
   {
@@ -101,12 +72,9 @@ const generateDailyVocabularyFlow = ai.defineFlow(
   },
   async input => {
     const {numWords} = input;
-    const words: { english: string; arabicTranslation: string; arabicTransliteration: string }[] = [];
-
-    // Generate the words using the prompt
+    
     const {output} = await generateDailyVocabularyPrompt({numWords});
 
-    // If the prompt returns a valid JSON, parse it and return it.  Otherwise, return an empty array.
     if (output) {
       return output;
     } else {
