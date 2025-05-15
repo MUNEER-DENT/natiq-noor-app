@@ -16,8 +16,8 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ناطق AI - رفيقك اللغوي الذكي', // Translated
-  description: 'ترجم، عرب، وتعلم مع ناطق AI، بدعم من Google Gemini.', // Translated
+  title: 'ناطق NOOR - رفيقك اللغوي الذكي', // Updated App Name
+  description: 'ترجم، عرب، وتعلم مع ناطق NOOR، بدعم من Google Gemini.', // Updated App Name
 };
 
 export default function RootLayout({

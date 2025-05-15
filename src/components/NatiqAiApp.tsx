@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 
@@ -15,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { handleTranslateAction, handleTransliterateAction, fetchDailyVocabularyAction, handleExtractTextAction } from '@/app/actions';
 import type { GenerateDailyVocabularyOutput } from '@/ai/flows/generate-daily-vocabulary';
 
-const MAX_WORDS = 200; // Updated to 200
+const MAX_WORDS = 200; 
 const ARABIC_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 function detectLanguage(text: string): 'ar' | 'en' {
@@ -256,7 +255,7 @@ export default function NatiqAiApp() {
       <header className="mb-8 text-center">
         <div className="flex items-center justify-center space-x-3 rtl:space-x-reverse">
           <BotMessageSquare className="h-12 w-12 text-primary" />
-          <h1 className="text-4xl md:text-5xl font-bold text-primary">Natiq AI</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-primary">ناطق NOOR</h1>
         </div>
         <p className="text-muted-foreground mt-2 text-lg">
           رفيقك اللغوي الذكي لاستخراج النصوص، الترجمة، والتعريب.
@@ -430,11 +429,9 @@ export default function NatiqAiApp() {
         </aside>
       </div>
       <footer className="mt-12 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} Natiq AI. يعمل بواسطة Google Gemini و Next.js.</p>
+        <p>&copy; {new Date().getFullYear()} ناطق NOOR. يعمل بواسطة Google Gemini و Next.js.</p>
         <p>مصمم لتفاعل لغوي سلس.</p>
       </footer>
     </div>
   );
 }
-
-    
