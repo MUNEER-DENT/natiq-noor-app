@@ -23,7 +23,7 @@ const GenerateDailyVocabularyOutputSchema = z.object({
     z.object({
       english: z.string().describe('The English word or phrase.'),
       arabicTranslation: z.string().describe('The Arabic translation of the English word/phrase.'),
-      arabicTransliteration: z.string().describe('The Arabic script transliteration of the original English word/phrase, focusing on phonetic accuracy (e.g., for "Thank you", it should be "ثانك يو").'),
+      arabicTransliteration: z.string().describe('The Arabic script transliteration of the original English word/phrase, focusing on phonetic accuracy (e.g., for "Thank you", it should be "ثانك يو"). This should represent how the English word/phrase sounds, not a transliteration of the Arabic translation.'),
     })
   ).describe('A list of English words or short phrases with their Arabic translations and transliterations of the original English.'),
 });
@@ -38,33 +38,24 @@ const generateDailyVocabularyPrompt = ai.definePrompt({
   input: {schema: GenerateDailyVocabularyInputSchema},
   output: {schema: GenerateDailyVocabularyOutputSchema},
   prompt: `You are an English-Arabic vocabulary assistant.
-Generate a list of {{numWords}} common English words or short phrases.
+Generate a list of {{numWords}} common, varied, and non-repetitive English words or short phrases. Aim for diversity in the selection.
 
 For each English word/phrase, you MUST provide:
 1.  'english': The original English word or phrase.
 2.  'arabicTranslation': The most common and natural Arabic translation for the English word/phrase.
-3.  'arabicTransliteration': An Arabic script representation of how the *original English word or phrase* sounds phonetically. This is NOT a transliteration of the Arabic translation. For example, if English is "Thank you", the arabicTransliteration should be something like "ثانك يو", not a transliteration of "شكراً".
+3.  'arabicTransliteration': An Arabic script representation of how the *original English word or phrase* sounds phonetically. This is NOT a transliteration of the Arabic translation. It should accurately reflect the English pronunciation using Arabic letters. For example, if English is "Thank you", the arabicTransliteration should be "ثَانْك يُو" or "ثَانْكِ يوُ" (prioritizing phonetic accuracy for an Arabic speaker learning English pronunciation), not a transliteration of "شكراً". For "hello", it should be "هالو" or "هَلُو". For "good morning", it should be "جود مورنينج" or "جُود مُورْنِنْج".
 
 Format the response as a JSON array of objects, where each object has the "english", "arabicTranslation", and "arabicTransliteration" keys.
 
-Example:
-[
-  {
-    "english": "hello",
-    "arabicTranslation": "مرحبا",
-    "arabicTransliteration": "هالو"
-  },
-  {
-    "english": "thank you",
-    "arabicTranslation": "شكرا لك",
-    "arabicTransliteration": "ثانك يو"
-  },
-  {
-    "english": "good morning",
-    "arabicTranslation": "صباح الخير",
-    "arabicTransliteration": "جود مورنينج"
-  }
-]`,
+Example for "Thank you":
+{
+  "english": "Thank you",
+  "arabicTranslation": "شكرا لك",
+  "arabicTransliteration": "ثَانْك يُو"
+}
+
+Ensure the words provided are common enough for a language learner but try to avoid overly simple or frequently suggested words if possible, to provide a richer learning experience.
+`,
 });
 
 const generateDailyVocabularyFlow = ai.defineFlow(
@@ -82,7 +73,6 @@ const generateDailyVocabularyFlow = ai.defineFlow(
       return output;
     } else {
       // Fallback or error handling
-      // For example, return an empty list or a default set if the prompt fails
       console.error("Failed to generate daily vocabulary from prompt.");
       return {words: [
         {
@@ -94,4 +84,3 @@ const generateDailyVocabularyFlow = ai.defineFlow(
     }
   }
 );
-

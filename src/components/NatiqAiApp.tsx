@@ -2,9 +2,9 @@
 // @ts-nocheck
 "use client";
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import Image from 'next/image';
-import { BotMessageSquare, Languages, TextQuote, ImageUp, Type, Loader2, AlertCircle, UploadCloud } from 'lucide-react';
+import { BotMessageSquare, Languages, TextQuote, ImageUp, Type, Loader2, AlertCircle, UploadCloud, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,8 @@ export default function NatiqAiApp() {
   
   const [dailyVocabulary, setDailyVocabulary] = useState<GenerateDailyVocabularyOutput['words'] | null>(null);
   const [isLoadingVocabulary, setIsLoadingVocabulary] = useState<boolean>(true);
+  const [isFetchingMoreVocabulary, startFetchingMoreVocabularyTransition] = useTransition();
+
 
   const [isTranslating, startTranslateTransition] = useTransition();
   const [isTransliterating, startTransliterateTransition] = useTransition();
@@ -47,34 +49,49 @@ export default function NatiqAiApp() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function loadDailyVocabulary() {
+  const loadDailyVocabulary = useCallback(async (isInitialLoad = false) => {
+    if (isInitialLoad) {
       setIsLoadingVocabulary(true);
-      try {
-        const vocabData = await fetchDailyVocabularyAction({ numWords: 3 });
-        if (vocabData?.words) {
-          setDailyVocabulary(vocabData.words);
-        } else {
-          setDailyVocabulary([]);
+    } else {
+      startFetchingMoreVocabularyTransition(async () => { /* handled by transition */ });
+    }
+    
+    try {
+      const vocabData = await fetchDailyVocabularyAction({ numWords: 3 });
+      if (vocabData?.words) {
+        setDailyVocabulary(vocabData.words);
+        if (!isInitialLoad) {
           toast({
-            title: 'خطأ في المفردات',
-            description: 'لم يتم تحميل المفردات اليومية.',
-            variant: 'destructive',
+            title: 'تم جلب مفردات جديدة',
           });
         }
-      } catch (err) {
-        console.error('Failed to fetch daily vocabulary:', err);
+      } else {
         setDailyVocabulary([]);
         toast({
           title: 'خطأ في المفردات',
-          description: 'حدث خطأ أثناء جلب المفردات اليومية.',
+          description: 'لم يتم تحميل المفردات.',
           variant: 'destructive',
         });
       }
-      setIsLoadingVocabulary(false);
+    } catch (err) {
+      console.error('Failed to fetch daily vocabulary:', err);
+      setDailyVocabulary([]);
+      toast({
+        title: 'خطأ في المفردات',
+        description: 'حدث خطأ أثناء جلب المفردات.',
+        variant: 'destructive',
+      });
+    } finally {
+      if (isInitialLoad) {
+        setIsLoadingVocabulary(false);
+      }
     }
-    loadDailyVocabulary();
-  }, [toast]);
+  }, [toast, startFetchingMoreVocabularyTransition]);
+
+
+  useEffect(() => {
+    loadDailyVocabulary(true);
+  }, [loadDailyVocabulary]);
 
   useEffect(() => {
     if (activeTab === 'text') {
@@ -94,7 +111,7 @@ export default function NatiqAiApp() {
         setImagePreview(imageDataUri);
         setExtractedText('');
         setProcessedText('');
-        setInputText('');
+        // setInputText(''); // Keep inputText if user switches back
         setTranslationResult(null);
         setTransliterationResult(null);
         setError(null);
@@ -195,6 +212,7 @@ export default function NatiqAiApp() {
     startTransliterateTransition(async () => {
       try {
         if (detectedInputLang === 'ar') {
+          // First, translate Arabic to English
           const translationResponse = await handleTranslateAction({ text: processedText, targetLanguage: 'en' });
           if (translationResponse.error || !translationResponse.translatedText) {
             setError(translationResponse.error || 'فشل ترجمة النص العربي قبل التعريب.');
@@ -203,6 +221,7 @@ export default function NatiqAiApp() {
           }
           
           const englishText = translationResponse.translatedText;
+          // Then, transliterate the resulting English text to Arabic script
           const translitResponse = await handleTransliterateAction({ text: englishText, sourceLanguage: 'en' });
 
           if (translitResponse.error) {
@@ -210,10 +229,10 @@ export default function NatiqAiApp() {
             toast({ title: 'خطأ في التعريب', description: translitResponse.error, variant: 'destructive' });
           } else {
             setTransliterationResult(translitResponse.transliteratedText ?? 'لا يوجد تعريب متاح.');
-            toast({ title: 'تم التعريب بنجاح', description: 'تم تعريب النص الإنجليزي الناتج.' });
+            toast({ title: 'تم التعريب بنجاح', description: 'تم تعريب النص الإنجليزي الناتج (الذي تُرجِمَ من النص العربي الأصلي).' });
           }
 
-        } else {
+        } else { // Input is English, transliterate directly to Arabic script
           const result = await handleTransliterateAction({ text: processedText, sourceLanguage: 'en' });
           if (result.error) {
             setError(result.error);
@@ -343,7 +362,7 @@ export default function NatiqAiApp() {
           </Card>
 
           {(translationResult || transliterationResult) && (
-            <Card className="shadow-lg">
+            <Card className="shadow-lg mt-6">
               <CardHeader>
                 <CardTitle className="text-xl">النتائج</CardTitle>
               </CardHeader>
@@ -378,7 +397,7 @@ export default function NatiqAiApp() {
               {isLoadingVocabulary ? (
                 <div className="space-y-2">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="p-3 bg-muted rounded-md animate-pulse h-16"></div>
+                    <div key={i} className="p-3 bg-muted rounded-md animate-pulse h-20"></div>
                   ))}
                 </div>
               ) : dailyVocabulary && dailyVocabulary.length > 0 ? (
@@ -398,6 +417,15 @@ export default function NatiqAiApp() {
               ) : (
                 <p className="text-muted-foreground">لا توجد مفردات متاحة اليوم. حاول مرة أخرى لاحقًا!</p>
               )}
+              <Button 
+                onClick={() => loadDailyVocabulary(false)} 
+                disabled={isFetchingMoreVocabulary || isLoadingVocabulary} 
+                className="w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
+                size="sm"
+              >
+                {isFetchingMoreVocabulary ? <Loader2 className="ms-0 me-2 h-4 w-4 animate-spin" /> : <RefreshCw className="ms-0 me-2 h-4 w-4" />}
+                مفردات أخرى
+              </Button>
             </CardContent>
           </Card>
         </aside>
