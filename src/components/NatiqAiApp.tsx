@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { handleTranslateAction, handleTransliterateAction, fetchDailyVocabularyAction, handleExtractTextAction } from '@/app/actions';
 import type { GenerateDailyVocabularyOutput } from '@/ai/flows/generate-daily-vocabulary';
 
-const MAX_WORDS = 50;
+const MAX_WORDS = 200; // Updated to 200
 const ARABIC_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 function detectLanguage(text: string): 'ar' | 'en' {
@@ -111,7 +111,6 @@ export default function NatiqAiApp() {
         setImagePreview(imageDataUri);
         setExtractedText('');
         setProcessedText('');
-        // setInputText(''); // Keep inputText if user switches back
         setTranslationResult(null);
         setTransliterationResult(null);
         setError(null);
@@ -271,7 +270,7 @@ export default function NatiqAiApp() {
               <CardTitle className="flex items-center text-2xl">
                 <Type className="ms-0 me-2 h-6 w-6 text-accent" /> الإدخال والإجراءات
               </CardTitle>
-              <CardDescription>أدخل نصًا أو قم بتحميل صورة للبدء.</CardDescription>
+              <CardDescription>أدخل نصًا أو قم بتحميل صورة للبدء. الحد الأقصى {MAX_WORDS} كلمة.</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'text' | 'image')} className="w-full">
@@ -312,7 +311,7 @@ export default function NatiqAiApp() {
                     {imagePreview && (
                       <div className="mt-4 relative">
                         <p className="text-sm font-medium mb-1">معاينة الصورة:</p>
-                        <Image src={imagePreview} alt="Uploaded preview" width={200} height={200} className="rounded-md border object-contain max-h-48" />
+                        <Image src={imagePreview} alt="Uploaded preview" width={200} height={200} className="rounded-md border object-contain max-h-48" data-ai-hint="abstract photo" />
                         {isExtractingText && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md">
                             <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -437,3 +436,5 @@ export default function NatiqAiApp() {
     </div>
   );
 }
+
+    
