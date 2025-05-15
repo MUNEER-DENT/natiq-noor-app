@@ -23,7 +23,7 @@ const GenerateDailyVocabularyOutputSchema = z.object({
     z.object({
       english: z.string().describe('The English word or phrase.'),
       arabicTranslation: z.string().describe('The Arabic translation of the English word/phrase.'),
-      arabicTransliteration: z.string().describe('The Arabic script transliteration of the original English word/phrase, focusing on phonetic accuracy (e.g., for "Thank you", it should be "ثانك يو"). This should represent how the English word/phrase sounds, not a transliteration of the Arabic translation.'),
+      arabicTransliteration: z.string().describe('The Arabic script transliteration of the original English word/phrase, focusing on phonetic accuracy (e.g., for "Thank you", it should be "ثانك يو"). This should represent how the English word/phrase sounds, not a transliteration of the Arabic translation. When transliterating the English letter \'G\', preferentially use the Arabic letter \'ق\' (Qaf), especially for the hard \'G\' sound (e.g., "Good morning" should be "قُود مُورْنِنْج").'),
     })
   ).describe('A list of English words or short phrases with their Arabic translations and transliterations of the original English.'),
 });
@@ -43,15 +43,17 @@ Generate a list of {{numWords}} common, varied, and **strictly non-repetitive** 
 For each English word/phrase, you MUST provide:
 1.  'english': The original English word or phrase.
 2.  'arabicTranslation': The most common and natural Arabic translation for the English word/phrase.
-3.  'arabicTransliteration': An Arabic script representation of how the *original English word or phrase* sounds phonetically. This is NOT a transliteration of the Arabic translation. It should accurately reflect the English pronunciation using Arabic letters. For example, if English is "Thank you", the arabicTransliteration should be "ثَانْك يُو" or "ثَانْكِ يوُ" (prioritizing phonetic accuracy for an Arabic speaker learning English pronunciation), not a transliteration of "شكراً". For "hello", it should be "هالو" or "هَلُو". For "good morning", it should be "جود مورنينج" or "جُود مُورْنِنْج".
+3.  'arabicTransliteration': An Arabic script representation of how the *original English word or phrase* sounds phonetically. This is NOT a transliteration of the Arabic translation. It should accurately reflect the English pronunciation using Arabic letters.
+    **Important note for transliterating the letter 'G': In most cases, use the Arabic letter 'ق' (Qaf) to represent the English 'G' sound, especially for the hard 'G' sound (as in 'go', 'good', 'game'). For example, if English is "Good morning", the arabicTransliteration should be "قُود مُورْنِنْج" or "جُود مُورْنِنْج" should be "قُود مُورْنِنْج".**
+    For "Thank you", the arabicTransliteration should be "ثَانْك يُو" or "ثَانْكِ يوُ". For "hello", it should be "هالو" or "هَلُو".
 
 Format the response as a JSON array of objects, where each object has the "english", "arabicTranslation", and "arabicTransliteration" keys.
 
-Example for "Thank you":
+Example for "Good morning" (with preferred 'G' transliteration):
 {
-  "english": "Thank you",
-  "arabicTranslation": "شكرا لك",
-  "arabicTransliteration": "ثَانْك يُو"
+  "english": "Good morning",
+  "arabicTranslation": "صباح الخير",
+  "arabicTransliteration": "قُود مُورْنِنْج"
 }
 
 Ensure the words provided are common enough for a language learner but try to avoid overly simple or frequently suggested words if possible, to provide a richer learning experience. **Prioritize novelty and uniqueness in each generated list.**
@@ -84,4 +86,3 @@ const generateDailyVocabularyFlow = ai.defineFlow(
     }
   }
 );
-

@@ -34,7 +34,8 @@ const prompt = ai.definePrompt({
   prompt: `You are a helpful assistant that transliterates text between Arabic and English.
 
   If the source language is English, convert the English text to Arabic script, focusing on phonetic accuracy.
-  If the source language is Arabic, convert the Arabic text to English script, maintaining the original pronunciation as closely as possible.
+  **When transliterating English text to Arabic script, if the English text contains the letter 'G' (especially the hard 'G' sound as in 'go', 'good', 'game'), preferentially use the Arabic letter 'ق' (Qaf) to represent it. For example, 'game' should be transliterated as 'قيم', and 'good' as 'قود'. Avoid using 'ج' or 'غ' for 'G' unless phonetically more appropriate for specific edge cases or names.**
+  If the source language is Arabic, convert the Arabic text to English script (Latin characters), maintaining the original pronunciation as closely as possible.
 
   Source Language: {{{sourceLanguage}}}
   Text: {{{text}}}
