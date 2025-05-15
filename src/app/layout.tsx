@@ -3,6 +3,7 @@ import { Tajawal, Roboto_Mono } from 'next/font/google'; // Updated font
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { Analytics } from "@vercel/analytics/next";
 
 const tajawal = Tajawal({ // Updated font
   variable: '--font-tajawal',
@@ -36,6 +37,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
