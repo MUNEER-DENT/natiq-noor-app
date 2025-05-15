@@ -38,7 +38,7 @@ const generateDailyVocabularyPrompt = ai.definePrompt({
   input: {schema: GenerateDailyVocabularyInputSchema},
   output: {schema: GenerateDailyVocabularyOutputSchema},
   prompt: `You are an English-Arabic vocabulary assistant.
-Generate a list of {{numWords}} common, varied, and non-repetitive English words or short phrases. Aim for diversity in the selection.
+Generate a list of {{numWords}} common, varied, and **strictly non-repetitive** English words or short phrases. Aim for maximum diversity in the selection. **It is crucial that the generated words are not simple repetitions of common examples and are distinct from each other in the current list. Avoid re-generating words that might have been provided in recent requests.**
 
 For each English word/phrase, you MUST provide:
 1.  'english': The original English word or phrase.
@@ -54,7 +54,7 @@ Example for "Thank you":
   "arabicTransliteration": "ثَانْك يُو"
 }
 
-Ensure the words provided are common enough for a language learner but try to avoid overly simple or frequently suggested words if possible, to provide a richer learning experience.
+Ensure the words provided are common enough for a language learner but try to avoid overly simple or frequently suggested words if possible, to provide a richer learning experience. **Prioritize novelty and uniqueness in each generated list.**
 `,
 });
 
@@ -84,3 +84,4 @@ const generateDailyVocabularyFlow = ai.defineFlow(
     }
   }
 );
+
